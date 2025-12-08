@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameDay Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #333;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 80px; /* Space for scrolling */
+        }
+
+        /* --- Header & Navigation --- */
+        .header {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+
+        .settings-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .settings-btn:hover { background: #333; color: white; }
+
+        /* Date Controls */
+        .date-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 5px;
+            border: 1px solid var(--border);
+            max-width: 400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .nav-btn:hover { background-color: rgba(255,255,255,0.1); color: white; }
+
+        #date-display {
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        /* Toggle Button */
+        .unranked-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .unranked-toggle.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border-color: #3b82f6;
+        }
+
+        /* --- Grid & Cards --- */
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .game-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        /* League Tag Colors */
+        .league-nfl { color: #60a5fa; }
+        .league-ncaaf { color: #fbbf24; }
+        .league-ncaam { color: #f87171; }
+        .league-nba { color: #f472b6; }
+        .league-nhl { color: #a3e635; }
+        .league-mlb { color: #c084fc; }
+
+        .league-label {
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .channel-badge {
+            background-color: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        .team-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .team-info { display: flex; align-items: center; gap: 10px; }
+        
+        .rank {
+            font-size: 0.75rem;
+            color: #888;
+            width: 20px;
+            text-align: right;
+        }
+
+        .team-logo { width: 24px; height: 24px; object-fit: contain; }
+        .team-name { font-weight: 600; font-size: 1rem; }
+        .score { font-weight: bold; font-size: 1.1rem; }
+
+        .game-status {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .live-dot {
+            height: 8px;
+            width: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .status-text.live { color: #ef4444; font-weight: bold; }
+        .status-text.final { color: var(--text-secondary); }
+
+        /* --- Modal (League Filter) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 90%;
+            max-width: 350px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover { background: rgba(255,255,255,0.05); }
+
+        .checkbox-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .close-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="top-row">
+            <h1>Scores</h1>
+            <button class="settings-btn" id="leagues-btn">
+                Leagues ▼
+            </button>
+        </div>
+
+        <div class="date-nav">
+            <button class="nav-btn" id="prev-day">❮</button>
+            <div id="date-display">Today</div>
+            <button class="nav-btn" id="next-day">❯</button>
+        </div>
+
+        <div class="unranked-toggle" id="show-all-btn">
+            <span>Show Unranked / All Teams</span>
+        </div>
+    </div>
+
+    <div id="loading" style="text-align: center; color: #666; margin-top: 20px;">Loading...</div>
+    <div id="game-container"></div>
+
+    <div class="modal-overlay" id="league-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Select Leagues</h3>
+            </div>
+            <div class="checkbox-group" id="league-list">
+                </div>
+            <button class="close-btn" id="close-modal">Done</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const ALL_APIS = [
+            { id: 'nfl', name: 'NFL', url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard' },
+            { id: 'ncaaf', name: 'NCAA Football', url: 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard' },
+            { id: 'ncaam', name: 'NCAA Men\'s BB', url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard' },
+            { id: 'nba', name: 'NBA', url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard' },
+            { id: 'nhl', name: 'NHL', url: 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard' },
+            { id: 'mlb', name: 'MLB', url: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard' }
+        ];
+
+        // --- STATE MANAGED BY LOCALSTORAGE ---
+        let activeLeagues = JSON.parse(localStorage.getItem('activeLeagues')) || ['nfl', 'ncaaf', 'ncaam', 'nba'];
+        
+        let currentDate = new Date(); // Start at today
+        let allGames = [];
+        let showAll = false;
+
+        // --- DOM ELEMENTS ---
+        const container = document.getElementById('game-container');
+        const loadingDiv = document.getElementById('loading');
+        const dateDisplay = document.getElementById('date-display');
+        const showAllBtn = document.getElementById('show-all-btn');
+        const modal = document.getElementById('league-modal');
+        const leagueList = document.getElementById('league-list');
+
+        // --- INITIALIZATION ---
+        updateDateDisplay();
+        setupLeagueModal();
+        fetchSportsData();
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('prev-day').onclick = () => changeDate(-1);
+        document.getElementById('next-day').onclick = () => changeDate(1);
+        
+        showAllBtn.onclick = () => {
+            showAll = !showAll;
+            showAllBtn.classList.toggle('active', showAll);
+            renderGames();
+        };
+
+        document.getElementById('leagues-btn').onclick = () => modal.style.display = 'flex';
+        document.getElementById('close-modal').onclick = () => {
+            modal.style.display = 'none';
+            fetchSportsData(); // Refresh data with new leagues
+        };
+
+        // --- CORE FUNCTIONS ---
+
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            updateDateDisplay();
+            fetchSportsData();
+        }
+
+        function updateDateDisplay() {
+            const today = new Date();
+            const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+            const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+            const dString = currentDate.toDateString();
+
+            if (dString === today.toDateString()) {
+                dateDisplay.innerText = "Today";
+            } else if (dString === tomorrow.toDateString()) {
+                dateDisplay.innerText = "Tomorrow";
+            } else if (dString === yesterday.toDateString()) {
+                dateDisplay.innerText = "Yesterday";
+            } else {
+                // Format: "Mon, Dec 9"
+                dateDisplay.innerText = currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+        }
+
+        function setupLeagueModal() {
+            leagueList.innerHTML = '';
+            ALL_APIS.forEach(api => {
+                const isChecked = activeLeagues.includes(api.id) ? 'checked' : '';
+                const item = document.createElement('label');
+                item.className = 'checkbox-item';
+                item.innerHTML = `
+                    <input type="checkbox" value="${api.id}" ${isChecked}>
+                    <span>${api.name}</span>
+                `;
+                // Add listener to save immediately on click
+                item.querySelector('input').addEventListener('change', (e) => {
+                    if(e.target.checked) {
+                        if(!activeLeagues.includes(api.id)) activeLeagues.push(api.id);
+                    } else {
+                        activeLeagues = activeLeagues.filter(id => id !== api.id);
+                    }
+                    localStorage.setItem('activeLeagues', JSON.stringify(activeLeagues));
+                });
+                leagueList.appendChild(item);
+            });
+        }
+
+        async function fetchSportsData() {
+            container.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            allGames = [];
+
+            // Convert current date to YYYYMMDD
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const day = String(currentDate.getDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`;
+            
+            // Only fetch APIs that are active
+            const activeAPIs = ALL_APIS.filter(api => activeLeagues.includes(api.id));
+
+            if (activeAPIs.length === 0) {
+                loadingDiv.innerText = "No leagues selected.";
+                return;
+            }
+
+            try {
+                const promises = activeAPIs.map(api => 
+                    fetch(`${api.url}?dates=${dateStr}`)
+                        .then(res => res.json())
+                        .then(data => ({...data, leagueId: api.id, leagueName: api.name}))
+                        .catch(err => null) // Handle errors gracefully
+                );
+                
+                const results = await Promise.all(promises);
+
+                results.forEach(leagueData => {
+                    if(leagueData && leagueData.events) {
+                        leagueData.events.forEach(event => {
+                            const game = processGameData(event, leagueData.leagueId, leagueData.leagueName);
+                            // Verify strict date match (important for NFL)
+                            if (isSameDate(game.date, currentDate)) {
+                                allGames.push(game);
+                            }
+                        });
+                    }
+                });
+
+                renderGames();
+            } catch (error) {
+                console.error("Error:", error);
+                container.innerHTML = '<div style="text-align:center">Error loading scores.</div>';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        function processGameData(event, leagueId, leagueName) {
+            const comp = event.competitions[0];
+            const competitors = comp.competitors;
+            const home = competitors.find(c => c.homeAway === 'home');
+            const away = competitors.find(c => c.homeAway === 'away');
+
+            const homeRank = home.curatedRank?.current < 99 ? home.curatedRank.current : null;
+            const awayRank = away.curatedRank?.current < 99 ? away.curatedRank.current : null;
+
+            return {
+                id: event.id,
+                leagueId: leagueId,
+                leagueName: leagueName, // e.g., "NCAA Football"
+                date: new Date(event.date),
+                statusState: event.status.type.state, // 'pre', 'in', 'post'
+                statusDetail: event.status.type.detail, // "Final", "10:34 2nd"
+                network: comp.broadcasts?.[0]?.names?.[0] || "",
+                home: {
+                    name: home.team.abbreviation || home.team.shortDisplayName,
+                    logo: home.team.logo,
+                    score: home.score,
+                    rank: homeRank
+                },
+                away: {
+                    name: away.team.abbreviation || away.team.shortDisplayName,
+                    logo: away.team.logo,
+                    score: away.score,
+                    rank: awayRank
+                }
+            };
+        }
+
+        function isSameDate(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() &&
+                   d1.getMonth() === d2.getMonth() &&
+                   d1.getDate() === d2.getDate();
+        }
+
+        function renderGames() {
+            container.innerHTML = '';
+            
+            if (allGames.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666; margin-top: 40px;">No games scheduled for these leagues today.</div>';
+                return;
+            }
+
+            // Sort: Live games first, then by time
+            const sortedGames = allGames.sort((a, b) => {
+                if (a.statusState === 'in' && b.statusState !== 'in') return -1;
+                if (b.statusState === 'in' && a.statusState !== 'in') return 1;
+                return a.date - b.date;
+            });
+
+            sortedGames.forEach(game => {
+                // Filter Logic:
+                // 1. Always show NFL, NBA, MLB, NHL
+                // 2. For NCAA, only show Top 25 UNLESS 'Show All' is active
+                let visible = false;
+                if (showAll) visible = true;
+                else if (['nfl', 'nba', 'nhl', 'mlb'].includes(game.leagueId)) visible = true;
+                else if (game.home.rank <= 25 || game.away.rank <= 25) visible = true;
+
+                if (!visible) return;
+
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                
+                const timeStr = game.date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                const isLive = game.statusState === 'in';
+                const isFinal = game.statusState === 'post';
+                
+                // Status HTML (Live indicator vs Final vs Time)
+                let statusHtml = `<span>${game.statusDetail}</span>`;
+                if(isLive) {
+                    statusHtml = `<span class="status-text live"><span class="live-dot"></span>${game.statusDetail}</span>`;
+                } else if (!isFinal) {
+                    statusHtml = `<span>${timeStr}</span>`; // Show time if not started
+                }
+
+                card.innerHTML = `
+                    <div class="league-label league-${game.leagueId}">
+                        <span>${game.leagueName}</span>
+                        ${game.network ? `<span class="channel-badge">${game.network}</span>` : ''}
+                    </div>
+                    
+                    <div>
+                        <div class="team-row">
+                            <div class="team-info">
+                                <span class="rank">${game.away.rank || ''}</span>
+                                <img src="${game.away.logo}" class="team-logo" loading="lazy">
+                                <span class="team-name">${game.away.name}</span>
+                            </div>
+                            <span class="score">${game.away.score}</span>
+                        </div>
+                        <div class="team-row">
+                            <div class="team-info">
+                                <span class="rank">${game.home.rank || ''}</span>
+                                <img src="${game.home.logo}" class="team-logo" loading="lazy">
+                                <span class="team-name">${game.home.name}</span>
+                            </div>
+                            <span class="score">${game.home.score}</span>
+                        </div>
+                    </div>
+
+                    <div class="game-status">
+                        ${statusHtml}
+                        ${isLive || isFinal ? `<span>${isFinal ? 'Final' : ''}</span>` : ''} 
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
