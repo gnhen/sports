@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GameDay Dashboard</title>
+    <title>Grant's Sports Dashboard</title>
     <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
 
     <div class="header">
         <div class="top-row">
-            <h1>Scores</h1>
+            <h1 id="scores-title" style="cursor: pointer;">Scores</h1>
             <button class="settings-btn" id="leagues-btn">Leagues ▼</button>
         </div>
 
         <div class="date-nav">
             <button class="nav-btn" id="prev-day">❮</button>
             <div id="date-display">Today</div>
+            <input type="date" id="date-picker" style="display:none;">
             <button class="nav-btn" id="next-day">❯</button>
         </div>
 
@@ -28,6 +29,13 @@
     <div id="loading">Loading...</div>
     
     <div id="main-container"></div>
+    
+    <div id="game-detail" style="display:none;">
+        <div class="game-detail-header">
+            <button class="back-btn" id="back-btn">← Back to Scores</button>
+        </div>
+        <div id="game-detail-content"></div>
+    </div>
 
     <div class="modal-overlay" id="league-modal">
         <div class="modal">
