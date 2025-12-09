@@ -84,7 +84,13 @@ async function fetchSportsData() {
     loadingDiv.style.display = 'block';
     allGames = [];
 
-    const dateStr = currentDate.toISOString().slice(0,10).replace(/-/g, '');
+    // --- FIX: Use Local Time instead of ISO (UTC) ---
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`; 
+    // -----------------------------------------------
+
     const activeAPIs = ALL_APIS.filter(api => activeLeagues.includes(api.id));
 
     if (activeAPIs.length === 0) { loadingDiv.innerText = "No leagues selected."; return; }
@@ -103,7 +109,10 @@ async function fetchSportsData() {
             if(leagueData && leagueData.events) {
                 leagueData.events.forEach(event => {
                     const game = processGameData(event, leagueData.leagueId, leagueData.leagueName);
-                    if (isSameDate(game.date, currentDate)) allGames.push(game);
+                    // Only push if dates match (filters out bad API returns)
+                    if (isSameDate(game.date, currentDate)) {
+                        allGames.push(game);
+                    }
                 });
             }
         });
@@ -121,6 +130,10 @@ function processGameData(event, leagueId, leagueName) {
     const home = comp.competitors.find(c => c.homeAway === 'home');
     const away = comp.competitors.find(c => c.homeAway === 'away');
     
+    // Safety check for rankings
+    const homeRank = (home.curatedRank && home.curatedRank.current < 99) ? home.curatedRank.current : null;
+    const awayRank = (away.curatedRank && away.curatedRank.current < 99) ? away.curatedRank.current : null;
+
     return {
         id: event.id,
         leagueId: leagueId,
@@ -129,13 +142,25 @@ function processGameData(event, leagueId, leagueName) {
         statusState: event.status.type.state,
         statusDetail: event.status.type.detail,
         network: comp.broadcasts?.[0]?.names?.[0] || "",
-        home: { name: home.team.abbreviation, logo: home.team.logo, score: home.score, rank: home.curatedRank?.current < 99 ? home.curatedRank.current : null },
-        away: { name: away.team.abbreviation, logo: away.team.logo, score: away.score, rank: away.curatedRank?.current < 99 ? away.curatedRank.current : null }
+        home: { 
+            name: home.team.abbreviation, 
+            logo: home.team.logo, 
+            score: home.score, 
+            rank: homeRank 
+        },
+        away: { 
+            name: away.team.abbreviation, 
+            logo: away.team.logo, 
+            score: away.score, 
+            rank: awayRank 
+        }
     };
 }
 
 function isSameDate(d1, d2) {
-    return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+    return d1.getFullYear() === d2.getFullYear() && 
+           d1.getMonth() === d2.getMonth() && 
+           d1.getDate() === d2.getDate();
 }
 
 // --- RENDER LOGIC (GROUPED BY SPORT) ---
@@ -143,37 +168,29 @@ function renderByLeague() {
     mainContainer.innerHTML = '';
     
     if (allGames.length === 0) {
-        mainContainer.innerHTML = '<div style="text-align:center;color:#666">No games today.</div>';
+        mainContainer.innerHTML = '<div style="text-align:center;color:#666;margin-top:20px">No games scheduled today.<br>Try "Show Unranked" or check "Leagues".</div>';
         return;
     }
 
-    // Loop through defined APIs to maintain order (NFL -> NCAAF -> etc)
     ALL_APIS.forEach(api => {
-        // Skip if not in user's active leagues
         if (!activeLeagues.includes(api.id)) return;
 
-        // 1. Filter games for this specific league
         let leagueGames = allGames.filter(g => g.leagueId === api.id);
 
-        // 2. Apply Visibility Filter (Show Ranked Only vs Show All)
         const visibleGames = leagueGames.filter(game => {
             if (showAll) return true;
-            // Always show NFL/NBA/NHL/MLB
             if (['nfl', 'nba', 'nhl', 'mlb'].includes(api.id)) return true;
-            // For NCAA, only show if ranked
             return (game.home.rank <= 25 || game.away.rank <= 25);
         });
 
-        if (visibleGames.length === 0) return; // Skip section if no games to show
+        if (visibleGames.length === 0) return;
 
-        // 3. Sort (Live first, then time)
         visibleGames.sort((a, b) => {
             if (a.statusState === 'in' && b.statusState !== 'in') return -1;
             if (b.statusState === 'in' && a.statusState !== 'in') return 1;
             return a.date - b.date;
         });
 
-        // 4. Build the Section
         const section = document.createElement('div');
         section.className = 'league-section';
         
@@ -184,7 +201,6 @@ function renderByLeague() {
         const grid = document.createElement('div');
         grid.className = 'league-grid';
 
-        // 5. Create Cards
         visibleGames.forEach(game => {
             const card = document.createElement('div');
             card.className = 'game-card';
